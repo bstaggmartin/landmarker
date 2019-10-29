@@ -11,22 +11,91 @@ for(i in 1:length(names.splits)){
   Vib.Tree$tip.label[i]<-names.splits[[i]][2]
 }
 Vib.Tree<-force.ultrametric(Vib.Tree)
-names(sp.heights$mean)[!(names(sp.heights$mean)%in%Vib.Tree$tip.label)]
+rownames(tmat)[!(rownames(tmat)%in%Vib.Tree$tip.label)]
 Vib.Tree<-bind.tip(Vib.Tree,"hengshanicum",where=fastMRCA(Vib.Tree,"mullaha","foetidum"))
 Vib.Tree<-bind.tip(Vib.Tree,"leiocarpum",where=fastMRCA(Vib.Tree,"inopinatum","sambucinum"))
 
 pruned.tree<-drop.tip(Vib.Tree,
-                      grep(paste(paste("^",c(names(sp.heights$mean)),"$",sep=""),collapse="|"),
+                      grep(paste(paste("^",c(rownames(tmat)),"$",sep=""),collapse="|"),
                            Vib.Tree$tip.label,invert=T))
 pruned.tree<-ladderize(pruned.tree)
 
 pruned.tree$edge.length<-pruned.tree$edge.length/4
 
+pruned.tree<-drop.tip(pruned.tree,'bracteatum')
+bract<-which(names(sp.EFNs.xs.shape1)=='bracteatum')
+sp.EFNs.xs.shape1<-sp.EFNs.xs.shape1[-bract]
+sp.EFNs.xs.shape2<-sp.EFNs.xs.shape2[-bract]
+sp.EFNs.ys.shape1<-sp.EFNs.ys.shape1[-bract]
+sp.EFNs.ys.shape2<-sp.EFNs.ys.shape2[-bract]
+sp.min.widths$mean<-sp.min.widths$mean[-bract]
+sp.min.bowl.widths$mean<-sp.min.bowl.widths$mean[-bract]
+sp.max.widths$mean<-sp.max.widths$mean[-bract]
+sp.max.bowl.widths$mean<-sp.max.bowl.widths$mean[-bract]
+emp.sp.EFNs.xs<-emp.sp.EFNs.xs[-bract]
+emp.sp.EFNs.ys<-emp.sp.EFNs.ys[-bract]
+
+seq<-seq(0.005,0.995,0.005)
+par(xpd=T)
+library(plotrix)
+pdf("GRFPfig.pdf",width=10,height=10)
+plot(pruned.tree,show.tip.label=F,cex=1,x.lim=50,y.lim=c(-5,45),edge.width=3,align.tip.label=T)
+test<-get("last_plot.phylo",envir=.PlotPhyloEnv)
+offset=1
+text(x=test$xx[1]+offset+base.pos*5+0.15,y=0.15,labels="base",cex=1,srt=60,adj=c(1,0.25))
+lines(x=rep(test$xx[1]+offset+base.pos*5,2),y=c(0.75,max(test$yy)+1),lwd=1,lty=2)
+text(x=test$xx[1]+offset+tip.pos*5+0.15,y=0.15,labels="tip",cex=1,srt=60,adj=c(1,0.25))
+lines(x=rep(test$xx[1]+offset+tip.pos*5,2),y=c(0.75,max(test$yy)+1),lwd=1,lty=2)
+for(i in 1:length(sp.EFNs.ys.shape1)){
+  ys<-c(test$yy[order(pruned.tree$tip.label)][i],
+        0.8*emp.sp.EFNs.ys[[i]]$y/max(emp.sp.EFNs.ys[[i]]$y)+
+          test$yy[order(pruned.tree$tip.label)][i],
+        test$yy[order(pruned.tree$tip.label)][i])-0.25
+  xs<-c(offset+test$xx[1],5*emp.sp.EFNs.ys[[i]]$x+offset+test$xx[1],5*1+offset+test$xx[1])
+  ys<-ys[xs>=(offset+test$xx[1])&xs<=(5*1+offset+test$xx[1])]
+  xs<-xs[xs>=(offset+test$xx[1])&xs<=(5*1+offset+test$xx[1])]
+  #lines(ys~xs,lwd=0.5)
+  polygon(ys~xs,
+          col=alter.cols(round(test$yy[order(pruned.tree$tip.label)][i]),0.25),lwd=0.5)
+}
+offset=7
+text(x=test$xx[1]+offset+midrib.pos*5+0.15,y=0.15,labels="midvein",cex=1,srt=60,adj=c(1,0.25))
+lines(x=rep(test$xx[1]+offset+midrib.pos*5,2),y=c(0.75,max(test$yy)+1),lwd=1,lty=2)
+text(x=test$xx[1]+offset+marg.pos*5+0.15,y=0.15,labels="margin",cex=1,srt=60,adj=c(1,0.25))
+lines(x=rep(test$xx[1]+offset+marg.pos*5,2),y=c(0.75,max(test$yy)+1),lwd=1,lty=2)
+for(i in 1:length(sp.EFNs.xs.shape1)){
+  ys<-c(test$yy[order(pruned.tree$tip.label)][i],
+        0.8*emp.sp.EFNs.xs[[i]]$y/max(emp.sp.EFNs.xs[[i]]$y)+
+          test$yy[order(pruned.tree$tip.label)][i],
+        test$yy[order(pruned.tree$tip.label)][i])-0.25
+  xs<-c(offset+test$xx[1],5*emp.sp.EFNs.xs[[i]]$x+offset+test$xx[1],5*1+offset+test$xx[1])
+  ys<-ys[xs>=(offset+test$xx[1])&xs<=(5*1+offset+test$xx[1])]
+  xs<-xs[xs>=(offset+test$xx[1])&xs<=(5*1+offset+test$xx[1])]
+  #lines(ys~xs,lwd=0.5)
+  polygon(ys~xs,
+          col=alter.cols(round(test$yy[order(pruned.tree$tip.label)][i]),0.25),lwd=0.5)
+}
+text(y=max(test$yy)+2,x=test$xx[1]+offset-0.5,cex=1,labels="Distribution",adj=c(0.5,0))
+offset=13.5
+for(i in 1:length(sp.max.widths$mean)){
+  draw.ellipse(x=test$xx[1]+0.5+offset,y=test$yy[order(pruned.tree$tip.label)][i],
+               a=exp(sp.max.widths$mean[i])/2,b=exp(sp.min.widths$mean[i])/2,angle=0,
+               lwd=0.5,col="chartreuse3")
+  draw.ellipse(x=test$xx[1]+0.5+offset,y=test$yy[order(pruned.tree$tip.label)][i],
+               a=exp(sp.max.bowl.widths$mean[i])/2,b=exp(sp.min.bowl.widths$mean[i])/2,angle=0,
+               lwd=0.5,col="darkorange3")
+}
+text(y=max(test$yy)+2,x=test$xx[1]+0.5+offset,cex=1,labels="Size/Shape",adj=c(0.5,0))
+lines(y=c(0,0),x=test$xx[1]+offset+c(0,1),lwd=2)
+text(x=test$xx[1]+offset+0.75,y=-0.5,labels="1 mm",cex=1,srt=60,adj=c(1,0.25))
+dev.off()
+
+
 library(cairoDevice)
 png(width=24*300,height=24*300,"test.png",bg="transparent",type="cairo")
 seq<-seq(0.005,0.995,0.005)
 par(xpd=T)
-plot(pruned.tree,label.offset=18,cex=8,x.lim=50,edge.width=22.5,y.lim=50,align.tip.label=T)
+plot(pruned.tree,show.tip.label=F,cex=8,x.lim=50,edge.width=22.5,y.lim=50,align.tip.label=T)
 test<-get("last_plot.phylo",envir=.PlotPhyloEnv)
 offset=1
 text(x=test$xx[1]+offset+base.pos*5,y=0.5,labels="base",cex=6,srt=90,adj=c(1,0.5))

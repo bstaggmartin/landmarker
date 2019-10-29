@@ -190,11 +190,11 @@ head(viburnum.coords)
 # 01. Read in data
 
 climate <- getData('worldclim', var='bio', res=2.5)
-
+saveRDS(climate,'worldclim')
 
 # make raster plots...
-plot(climate[[4]],
-     main="Seasonality",xlab="Longitude",ylab="Latitude",
+plot(climate[[2]],
+     main="",xlab="Longitude",ylab="Latitude",
      cex.axis=1.3,cex.lab=1.4,cex.main=1.5,col=terrain.colors(50))
 
 

@@ -211,3 +211,23 @@ legend("topright",pt.bg=alter.cols(c(4,6,8,10),0.25),pch=22,bty='n',pt.cex=8,cex
        legend=c("margino-lateral centroid","margino-lateral dispersion",
                 "baso-apical centroid","baso-apical dispersion"))
 dev.off()
+
+tmat2<-tmat[-7,-9]
+pca<-prcomp(tmat,center=T,scale=T)
+plot(pca$sdev)
+plot.x<-function(x=1,y=2,...){
+  plot(pca$x[,y]~pca$x[,x],col="white",...)
+  text(rownames(pca$x),x=pca$x[,x],y=pca$x[,y],col=c("blue","green","red")[types])
+}
+par(mfrow=c(2,2),mar=c(0,0,0,0))
+plot.x(1,2,yaxt='n',xaxt='n')
+plot.x(3,2,yaxt='n',xaxt='n')
+plot.x(1,3,yaxt='n',xaxt='n')
+library(mvMORPH)
+names(types)<-rownames(pca$x)
+fit<-mvgls(std.tmat~1,tree=pruned.tree,model='BM')
+fit2<-mvgls(std.tmat~1,tree=pruned.tree,model='OU')
+fit3<-mvgls(std.tmat~1,tree=pruned.tree,model='EB')
+par(mfrow=c(1,1),mar=c(5,5,3,1))
+phy.pca<-mvgls.pca(fit,col=c("blue","green","red")[types[rownames(fit$fitted)]],axes=c(2,3))
+phy.pca$vectors

@@ -4,8 +4,8 @@
 gen.covar.mat<-function(x,covar.start,lm.start,spec.lab="spec",leaf.lab="leaf"){
   EFN_att<-grep("EFN\\d+.type|EFN\\d+.side",colnames(x))
   splits<-strsplit(as.character(x[,spec.lab]),"_")
-  x$sp<-data.table::transpose(splits)[[1]]
-  x$ind<-data.table::transpose(splits)[[2]]
+  x$sp<-transpose(splits)[[1]]
+  x$ind<-transpose(splits)[[2]]
   x_covar<-x[seq(1,nrow(x)-2,3),c(ncol(x)-1,ncol(x),covar.start:(lm.start-1),EFN_att)]
   spec<-which(colnames(x_covar)==spec.lab)
   x_covar<-x_covar[,-spec]

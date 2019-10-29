@@ -14,6 +14,7 @@ alter.cols<-function(x,alph=0.5,darken=1,name=F){
 custom.palette<-c("red","orange","green2","blue","purple")
 palette(colorRampPalette(custom.palette)(10))
 library(abind)
+library(data.table)
 
 #Load up auxillary functions
 source("aux_fun/GeomFunctions.R")
@@ -36,7 +37,8 @@ splits<-split.leaves(lms,covars,EFN.info.start=4)
 
 #transform landmarks using procrustes procedure
 trans.lms<-proc.fit(splits$x,scale=T)
-trans.lms[grep("EFN14",dimnames(trans.lms)[[1]]),,"168.R"]<-NA
+#168.R should be fixed now--I deleted EFN14--seems to be some kinda mistake
+#trans.lms[grep("EFN14",dimnames(trans.lms)[[1]]),,"168.R"]<-NA
 
 #plotting whole leaf landmarks to make sure code worked!
 #plot(trans.lms[1:3,"y",]~trans.lms[1:3,"x",],col=rep(c("red","blue","green"),dim(trans.lms)[3]),asp=1)
@@ -145,27 +147,49 @@ plot.sim(EFNs.areas,sp.areas,splits$x_covar,"EFN area (mm)")
 
 
 trans.lms<-proc.fit(splits$x,scale=T)
-trans.lms[grep("EFN14",dimnames(trans.lms)[[1]]),,"168.R"]<-NA
+#major outliers due to curvature/folding of leaf: 201.L, 48.L
+#168.R should be fixed now--I deleted EFN14--seems to be some kinda mistake
+#trans.lms[grep("EFN14",dimnames(trans.lms)[[1]]),,"168.R"]<-NA
+
 #Fitting beta distribution to x and y distributions of EFNs across unit leaf scale...
 library(fitdistrplus)
+marg.coords<-extract.points(trans.lms,'EFN\\d+.margin');marg.coords<-cbind(extract.xs(marg.coords),extract.ys(marg.coords))
 std.EFNs.xs<-EFNs.xs/trans.lms["side.max","x",sapply(strsplit(names(EFNs.areas),' '),'[',1)]
+marg.coords[,1]<-marg.coords[,1]/trans.lms["side.max","x",sapply(strsplit(names(EFNs.areas),' '),'[',1)]
 std.EFNs.xs[std.EFNs.xs< -0.1]<-NA
 midrib.pos<-0-min(std.EFNs.xs,na.rm=T)
 marg.pos<-1-min(std.EFNs.xs,na.rm=T)
+marg.coords[,1]<-marg.coords[,1]-min(std.EFNs.xs,na.rm=T)
 std.EFNs.xs<-std.EFNs.xs-min(std.EFNs.xs,na.rm=T)
 midrib.pos<-midrib.pos/max(marg.pos,std.EFNs.xs,na.rm=T)
 marg.pos<-marg.pos/max(marg.pos,std.EFNs.xs,na.rm=T)
+marg.coords[,1]<-marg.coords[,1]/max(marg.pos,std.EFNs.xs,na.rm=T)
 std.EFNs.xs<-std.EFNs.xs/max(marg.pos,std.EFNs.xs,na.rm=T)
+
 std.EFNs.ys<-EFNs.ys/trans.lms["tip","y",sapply(strsplit(names(EFNs.areas),' '),'[',1)]
+marg.y.pos<-extract.ys(extract.points(trans.lms,'side.max'))/trans.lms["tip","y",]
+marg.coords[,2]<-marg.coords[,2]/trans.lms["tip","y",sapply(strsplit(names(EFNs.areas),' '),'[',1)]
 base.pos<-0-min(std.EFNs.ys,na.rm=T)
 tip.pos<-1-min(std.EFNs.ys,na.rm=T)
+marg.y.pos<-marg.y.pos-min(std.EFNs.ys,na.rm=T)
+marg.coords[,2]<-marg.coords[,2]-min(std.EFNs.ys,na.rm=T)
 std.EFNs.ys<-std.EFNs.ys-min(std.EFNs.ys,na.rm=T)
 base.pos<-base.pos/max(tip.pos,std.EFNs.ys,na.rm=T)
 tip.pos<-tip.pos/max(tip.pos,std.EFNs.ys,na.rm=T)
+marg.y.pos<-marg.y.pos/max(std.EFNs.ys,na.rm=T)
+marg.y.pos<-tapply(marg.y.pos,spec.var(marg.y.pos,splits$x_covar,'sp'),mean)
+marg.coords[,2]<-marg.coords[,2]/max(tip.pos,std.EFNs.ys,na.rm=T)
 std.EFNs.ys<-std.EFNs.ys/max(tip.pos,std.EFNs.ys,na.rm=T)
+
+tmp<-marg.coords[,1];names(tmp)<-rownames(marg.coords)
+marg.coords<-split(marg.coords,spec.var(tmp,splits$x_covar,'sp'))
+marg.coords<-lapply(marg.coords,function(ii) matrix(ii[!is.na(ii)],ncol=2))
 
 sp.EFNs.xs<-tapply(std.EFNs.xs[!is.na(std.EFNs.xs)],sp_fac[!is.na(std.EFNs.xs)],fitdist,dist="beta",method="mme")
 sp.EFNs.ys<-tapply(std.EFNs.ys[!is.na(std.EFNs.ys)],sp_fac[!is.na(std.EFNs.ys)],fitdist,dist="beta",method="mme")
+
+emp.sp.EFNs.xs<-tapply(std.EFNs.xs[!is.na(std.EFNs.xs)],sp_fac[!is.na(std.EFNs.xs)],density,from=0,to=1,adj=1.5)
+emp.sp.EFNs.ys<-tapply(std.EFNs.ys[!is.na(std.EFNs.ys)],sp_fac[!is.na(std.EFNs.ys)],density,from=0,to=1,adj=1.5)
 
 sp.EFNs.xs.shape1<-sapply(sapply(sp.EFNs.xs,'[',1),'[',1)
 names(sp.EFNs.xs.shape1)<-sapply(strsplit(names(sp.EFNs.xs.shape1),"\\."),'[',1)
@@ -228,6 +252,74 @@ for(i in sort(as.character(unique(sp_fac)))){
   EFNs.ys.mus.se[i]<-sd(perm.EFNs.ys.mus[i,])
   EFNs.ys.rates.se[i]<-sd(perm.EFNs.ys.rates[i,])
 }
+
+plot(EFNs.ys.mus~EFNs.xs.mus)
+segments(x0=c(EFNs.xs.mus,EFNs.xs.mus-EFNs.xs.mus.se),x1=c(EFNs.xs.mus,EFNs.xs.mus+EFNs.xs.mus.se),
+         y0=c(EFNs.ys.mus-EFNs.ys.mus.se,EFNs.ys.mus),y1=c(EFNs.ys.mus+EFNs.ys.mus.se,EFNs.ys.mus))
+text(x=EFNs.xs.mus,y=EFNs.ys.mus,labels=names(EFNs.xs.mus))
+
+#Maybe try fitting margin kernel line by treating data as polar...?
+EFNs.dens<-mapply(kde2d,
+                  x=split(std.EFNs.xs[!is.na(std.EFNs.xs)&!is.na(std.EFNs.ys)],sp_fac[!is.na(std.EFNs.xs)&!is.na(std.EFNs.ys)]),
+                  y=split(std.EFNs.ys[!is.na(std.EFNs.xs)&!is.na(std.EFNs.ys)],sp_fac[!is.na(std.EFNs.xs)&!is.na(std.EFNs.ys)]),
+                  lims=rep(list(c(-0.1,1.1,-0.1,1.1)),length(unique(sp_fac))),n=100,h=0.2)
+rad.pt<-(tip.pos+base.pos)/2
+r<-lapply(marg.coords,function(ii) apply(ii,1,function(jj) sqrt((jj[2]-rad.pt)^2+(jj[1]-midrib.pos)^2)))
+#o<-unlist(sapply(marg.coords,function(ii) ii[,2]))-(tip.pos-base.pos)
+#a<-unlist(sapply(marg.coords,function(ii) ii[,2]))-midrib.pos
+#cond<-ifelse(a<0,-pi,0)
+theta<-lapply(marg.coords,function(ii) apply(ii,1,function(jj) atan((jj[2]-rad.pt)/(jj[1]-midrib.pos))-
+                                               ifelse((jj[1]-midrib.pos)>0,0,pi)))
+plot(x=r$hispidulum*cos(theta$hispidulum),y=r$hispidulum*sin(theta$hispidulum))
+marg<-ksmooth(x=unlist(theta),y=unlist(r),'normal')
+plot.dens<-function(sp,dens.maps=EFNs.dens,cex=1,alph=0.5,...){
+  #xy<-cbind(rep(dens.maps[,sp]$x,length(dens.maps[,sp]$y)),rep(dens.maps[,sp]$y,each=length(dens.maps[,sp]$y)))
+  #colmap<-(dens.maps[,sp]$z-min(dens.maps[,sp]$z))/(max(dens.maps[,sp]$z)-min(dens.maps[,sp]$z))
+  #plot(xy[,2]~xy[,1],col=rgb(1-colmap,1-colmap,1-colmap,alph),pch=16,xlim=c(0,1),ylim=c(0,1),cex=cex)
+  image(dens.maps[,sp]$x,dens.maps[,sp]$y,dens.maps[,sp]$z,co=rev(gray.colors(50,start=0,end=1)),...)
+  #points(c(base.pos,tip.pos,marg.y.pos[sp])~c(midrib.pos,midrib.pos,marg.pos),
+  #       pch=16,col=rgb(1,0,0,0.2),cex=1)
+  #marg<-ksmooth(x=theta[[sp]],y=r[[sp]],'normal')
+  #marg<-smooth.spline(x=theta[[sp]],y=r[[sp]],spar=1)
+  #points(x=unlist(sapply(marg.coords,function(ii) ii[,1])),y=unlist(sapply(marg.coords,function(ii) ii[,2])),
+         #pch=16,col=rgb(1,0,0,0.02))
+  lines(x=marg$y*cos(marg$x)+midrib.pos,y=marg$y*sin(marg$x)+rad.pt,col=rgb(1,0,0,0.1),lwd=4)
+  lines(x=c(midrib.pos,midrib.pos),y=c(0,tip.pos),col=rgb(1,0,0,0.1),lwd=4)
+  #points(marg.coords[[sp]],pch=16,col=rgb(1,0,0,0.2),cex=0.5)
+}
+pdf('2D_kernels2.pdf',width=10,height=10)
+par(mfrow=c(7,6),mar=c(0.1,0.1,1,0.1))
+for(i in sort(unique(sp_fac))){
+  plot.dens(i,yaxt='n',xaxt='n',main=as.character(i),cex.main=0.75,xlim=c(-0.1,1.1),ylim=c(-0.1,1.1))
+}
+dev.off()
+
+experiment<-t(sapply(EFNs.dens[3,],function(ii) as.vector(ii)))
+norm<-t(sapply(1:nrow(experiment),function(ii) experiment[ii,]/max(experiment[ii,])))
+#pruned.norm<-norm
+#pruned.norm[pruned.norm<1e-10]<-0
+#pruned.norm<-pruned.norm[,-which(apply(pruned.norm,2,function(ii) all(ii==0)))]
+rownames(norm)<-rownames(experiment)
+
+#maybe try cutting out grid cells where EFNs don't occur from analysis so variation can be scaled for PCA?
+pca<-prcomp(norm)
+type<-c(1,2,1,2,1,1,2,2,2,2,1,1,4,1,2,2,1,2,2,5,1,1,1,4,2,4,1,1,1,1,2,1,2,1,1,1,1,2,2,1,3,2)
+y.ax<-pca$x[,2]
+x.ax<-pca$x[,1]
+plot(y.ax~x.ax,col='white')
+text(x=x.ax,y=y.ax,labels=rownames(pca$x),col=c("red","green","blue","goldenrod","cyan")[type])
+combos<-expand.grid(rownames(pca$x),rownames(pca$x))
+dist.mat<-matrix(NA,nrow=42,ncol=42);rownames(dist.mat)<-rownames(pca$x);colnames(dist.mat)<-rownames(pca$x)
+for(i in 1:nrow(combos)){
+  sp1<-combos[i,1];sp2<-combos[i,2]
+  dist.mat[sp1,sp2]<-sqrt(sum(apply(pca$x[c(sp1,sp2),],2,function(ii) (ii[1]-ii[2])^2)))
+}
+image(dist.mat[pruned.tree$tip.label,pruned.tree$tip.label],col=gray.colors(50,start=1,end=0))
+image(vcv(pruned.tree),col=gray.colors(50,start=0,end=1))
+
+plot(cumsum(pca$sdev)/sum(pca$sdev),ylim=c(0,1))
+
+pal<-c("red","green","blue","goldenrod","cyan")
 
 #get 95% errors (not assuming normal, not worrying se vs. sd distinction)
 #EFNs.xs.mus.95es<-EFNs.xs.mus
@@ -300,9 +392,11 @@ plot.sim(EFNs.heights,sp.heights,splits$x_covar,"EFN height (mm)")
 
 marg.pos2<- -min(d2marg,na.rm=T)
 std.d2marg<-d2marg-min(d2marg,na.rm=T)
-sp.d2marg<-get.sp.means(std.d2marg,covars)
+sp.d2marg<-get.sp.means(d2marg,covars)
 plot.sim(std.d2marg,sp.d2marg,splits$x_covar,"distance to margin")
 abline(h=marg.pos2)
+
+sp.d2vein<-get.sp.means(d2vein,covars)
 
 library(plotrix)
 x.adv<-1.1
@@ -338,11 +432,61 @@ text(x=seq(0,(n.spp-1)*x.adv,x.adv),
 climate.means<-read.csv("data/Viburnum.climateMeans.csv",row.names=1)
 rownames(climate.means)<-sapply(strsplit(as.character(climate.means[,1])," "),'[',2)
 climate.means<-climate.means[,-c(1:2)]
-plot(climate.means[,"bio4"])
+orein<-Vib.Tree$tip.label[getDescendants(Vib.Tree,fastMRCA(Vib.Tree,'microphyllum','toronis'))]
+#orein<-Vib.Tree$tip.label[getDescendants(Vib.Tree,fastMRCA(Vib.Tree,'acutifolium','toronis'))]
+orein<-orein[!is.na(orein)]
+succo<-Vib.Tree$tip.label[getDescendants(Vib.Tree,fastMRCA(Vib.Tree,'wrightii','japonicum'))]
+#succo<-Vib.Tree$tip.label[getDescendants(Vib.Tree,fastMRCA(Vib.Tree,'mullaha','japonicum'))]
+succo<-succo[!is.na(succo)]
+solen<-Vib.Tree$tip.label[getDescendants(Vib.Tree,fastMRCA(Vib.Tree,'sieboldii','erubescens'))]
+#solen<-Vib.Tree$tip.label[getDescendants(Vib.Tree,fastMRCA(Vib.Tree,'grandiflorum','erubescens'))]
+solen<-solen[!is.na(solen)]
+clade<-c(solen,orein,succo)
+pca<-prcomp(climate.means[,-(1:2)],scale.=T)
+plot(cumsum(pca$sdev)/sum(pca$sdev))
+grad<-100
+ramp<-colorRampPalette(c('green','blue'))(grad)
+std.lat<-round((abs(climate.means$lat)-min(abs(climate.means$lat)))/
+                 (max(abs(climate.means$lat))-min(abs(climate.means$lat)))*(grad-1)+1)
+plot(pca$x,pch=16,cex=2,
+     #col=c(rgb(0,0,0,0.05),rgb(1,0,0,0.05))[ifelse(climate.coords[,1]%in%clade,2,1)],xlim=c(-20,10))
+     col=alter.cols(ramp[std.lat],alph=0.5,name=T))
+points(pca$x,pch=16,cex=1,
+       col=c(rgb(0,0,0,0),rgb(1,0,0,0.5))[ifelse(rownames(climate.means)%in%clade,2,1)])
+plot3d(pca$x,,size=10,
+       col=alter.cols(ramp[std.lat],alph=0.05,name=T))
+points3d(pca$x,size=20,
+         col=c(rgb(0,0,0,0),rgb(1,0,0,0.05))[ifelse(rownames(climate.means)%in%clade,2,1)])
+
+plot(pca$x,col=c(rgb(0,0,0,0.5),rgb(1,0,0,0.5))[ifelse(rownames(climate.means)%in%clade,2,1)],pch=16)
+for(i in 1:ncol(climate.means)){
+  plot(abs(climate.means[,i])~jitter(c(1,2)[ifelse(rownames(climate.means)%in%clade,2,1)],0.5),pch=16,cex=2,xlim=c(0,3),
+       col=c(rgb(0,0,0,0.5),rgb(1,0,0,0.5))[ifelse(rownames(climate.means)%in%clade,2,1)],ylab=i)
+}
+
+climate.coords<-read.csv("data/Viburnum.climateCoords.csv",row.names=1)
+climate.coords[,1]<-sapply(strsplit(as.character(climate.coords[,1])," "),'[',2)
+climate.coords<-climate.coords[complete.cases(climate.coords),]
+pca<-prcomp(climate.coords[,-(1:3)],scale.=T)
+plot(cumsum(pca$sdev)/sum(pca$sdev))
+grad<-100
+ramp<-colorRampPalette(c('green','blue'))(grad)
+std.lat<-round((abs(climate.coords$lat)-min(abs(climate.coords$lat)))/
+                 (max(abs(climate.coords$lat))-min(abs(climate.coords$lat)))*(grad-1)+1)
+plot(pca$x,pch=16,cex=1,
+     #col=c(rgb(0,0,0,0.05),rgb(1,0,0,0.05))[ifelse(climate.coords[,1]%in%clade,2,1)],xlim=c(-20,10))
+     col=alter.cols(ramp[std.lat],alph=0.02,name=T),xlim=c(-20,20))
+points(pca$x,pch=16,cex=0.5,
+       col=c(rgb(0,0,0,0),rgb(1,0,0,0.05))[ifelse(climate.coords[,1]%in%clade,2,1)])
+plot3d(pca$x,,size=5,
+       col=alter.cols(ramp[std.lat],alph=0.05,name=T))
+points3d(pca$x,size=10,
+         col=c(rgb(0,0,0,0),rgb(1,0,0,0.05))[ifelse(climate.coords[,1]%in%clade,2,1)])
 
 climate.pruned<-climate.means[rownames(climate.means)%in%pruned.tree$tip.label,]
 plot(climate.pruned[,"bio4"]~climate.pruned[,"lat"])
 text(x=climate.pruned[,"lat"],y=climate.pruned[,"bio4"],labels=rownames(climate.pruned))
+
 
 sp.lats<-abs(climate.pruned[,"lat"]);names(sp.lats)<-rownames(climate.pruned)
 sp.seasonality<-climate.pruned[,"bio4"];names(sp.seasonality)<-rownames(climate.pruned)
