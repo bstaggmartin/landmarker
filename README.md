@@ -1,2 +1,4 @@
 # landmarker
+NOTE: This is all now pretty much defunct--a dead-end project I explored in the first year of my PhD. Reach out to me at bruce.stagg.martin@gmail.com if you find yourself here and are interested in any of this.
+
 R scripts and functions for loading up and working with geometric morphometrics-esque landmark data in some unconventional ways. Mostly includes scripts I used to process, analyze, and visualize landmark data I collected on Viburnum extrafloral nectaries at the moment. I hope to make these functions more generalized in the future so that they can accomodate landmarking any type of leaf surface features (or similarly complex, plastic traits that cannot easily be passed through a procrustes superimposition and principal components analysis a la traditional geometric morphometrics). Only for 2D landmark data at the moment.
